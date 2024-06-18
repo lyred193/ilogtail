@@ -2,6 +2,9 @@
 // Created by lurious on 2024/6/17.
 //
 #include "flusher/FlusherArmsMetrics.h"
+
+#include <snappy.h>
+
 #include "batch/FlushStrategy.h"
 #include "common/EndpointUtil.h"
 #include "common/HashUtil.h"
@@ -13,8 +16,7 @@
 #include "sdk/Common.h"
 #include "sender/PackIdManager.h"
 #include "sender/Sender.h"
-#include "serializer/SLSSerializer.h"
-#include <snappy.h>
+#include "serializer/ArmsSerializer.h"
 
 
 using namespace std;
@@ -24,7 +26,6 @@ namespace logtail {
 
 bool FlusherArmsMetrics::Init(const Json::Value& config, Json::Value& optionalGoPipeline) {
     //
-    mGroupListSerializer = make_unique<SLSEventGroupListSerializer>(this);
 }
 
 bool FlusherArmsMetrics::Register() {
@@ -57,16 +58,19 @@ void FlusherArmsMetrics::SerializeAndPush(vector<BatchedEventsList>&& groupLists
 // req.Header.Set("User-Agent", e.userAgent)
 sdk::AsynRequest* FlusherArmsMetrics::BuildRequest(SenderQueueItem* item) const {
     map<string, string> httpHeader;
-    httpHeader[CONTENT_TYPE] = "text/plain";
+    httpHeader[logtail::sdk::CONTENT_TYPE] = "text/plain";
     httpHeader["content.encoding"] = "snappy";
     string body = "";
-    bool mUsingHTTPS = true;
+    string compressBody;
+    //  snappy compress
+    // snappy::Compress(body,body, compressBody);
+    string HTTP_POST = "POST";
     string host = "";
     int32_t port = 443;
     string operation = "";
     string queryString = "";
     int32_t mTimeout = 600;
-    Response* response = new PostLogStoreLogsResponse();
+    sdk::Response* response = new sdk::PostLogStoreLogsResponse();
     SendClosure* callBack = new SendClosure;
     string mInterface = "";
     return new sdk::AsynRequest(HTTP_POST,
@@ -78,7 +82,7 @@ sdk::AsynRequest* FlusherArmsMetrics::BuildRequest(SenderQueueItem* item) const 
                                 body,
                                 mTimeout,
                                 mInterface,
-                                mUsingHTTPS,
+                                true,
                                 callBack,
                                 response);
 }
@@ -86,5 +90,5 @@ sdk::AsynRequest* FlusherArmsMetrics::BuildRequest(SenderQueueItem* item) const 
 } // namespace logtail
 
 int main() {
-    printf("test .. ")
+    printf("test .. ");
 }

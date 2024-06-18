@@ -10,7 +10,6 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include <snappy>
 #include "batch/BatchStatus.h"
 #include "batch/Batcher.h"
 #include "common/LogstoreFeedbackKey.h"
