@@ -165,3 +165,5 @@ sudo make clean
 ./configure --prefix=$DESTINATION --disable-shared --enable-static
 make -j24
 sudo make install
+
+# snappy

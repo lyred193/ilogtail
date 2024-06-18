@@ -14,8 +14,8 @@
 
 #include "processor/daemon/LogProcess.h"
 
-#include "batch/TimeoutFlushManager.h"
 #include "app_config/AppConfig.h"
+#include "batch/TimeoutFlushManager.h"
 #include "common/Flags.h"
 #include "go_pipeline/LogtailPlugin.h"
 #include "monitor/LogFileProfiler.h"
@@ -137,6 +137,7 @@ bool LogProcess::FlushOut(int32_t waitMs) {
     return false;
 }
 
+
 void* LogProcess::ProcessLoop(int32_t threadNo) {
     LOG_DEBUG(sLogger, ("LogProcessThread", "Start")("threadNo", threadNo));
     static int32_t lastMergeTime = 0;
@@ -186,6 +187,7 @@ void* LogProcess::ProcessLoop(int32_t threadNo) {
                 ProcessQueueManager::GetInstance()->Wait(100);
                 continue;
             }
+
 
             mThreadFlags[threadNo] = true;
             auto pipeline = PipelineManager::GetInstance()->FindPipelineByName(configName);
@@ -285,6 +287,8 @@ void* LogProcess::ProcessLoop(int32_t threadNo) {
                         0,
                         ""); // TODO: I don't think errorLine is useful
                 }
+                LOG_INFO(sLogger, ("-----pipeline start to sent data", "create By Lurious"));
+                LOG_INFO(sLogger, ("-----data info data size: ", eventGroupList.size()));
                 pipeline->Send(std::move(eventGroupList));
             }
         }

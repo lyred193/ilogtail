@@ -24,6 +24,7 @@
 #include <string>
 
 #include "app_config/AppConfig.h"
+#include "flusher/FlusherArmsMetrics.h"
 #include "flusher/FlusherSLS.h"
 #include "input/InputContainerStdio.h"
 #include "input/InputFile.h"
@@ -156,6 +157,9 @@ void PluginRegistry::LoadStaticPlugins() {
 #endif
 
     RegisterFlusherCreator(new StaticFlusherCreator<FlusherSLS>());
+    LOG_INFO(sLogger, ("FlusherArmsMetrics info", "start load FlusherArmsMetrics flusher"));
+
+    RegisterFlusherCreator(new StaticFlusherCreator<FlusherArmsMetrics>());
 }
 
 void PluginRegistry::LoadDynamicPlugins(const set<string>& plugins) {

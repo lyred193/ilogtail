@@ -96,6 +96,9 @@ add_subdirectory(reader)
 add_subdirectory(sdk)
 add_subdirectory(sender)
 add_subdirectory(serializer)
+add_subdirectory(arms_metrics_flusher)
+add_subdirectory(arms_metrics_serializer)
+
 
 if (LINUX)
     if (NOT WITHOUTSPL)
