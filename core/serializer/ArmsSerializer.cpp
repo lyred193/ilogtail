@@ -14,12 +14,25 @@ namespace logtail {
 bool ArmsMetricsEventGroupListSerializer::Serialize(std::vector<BatchedEvents>&& v,
                                                     std::string& res,
                                                     std::string& errorMsg) {
+    for (auto& batchedEvents : v) {
+        ConvertBatchedEventsToMeasureBathch(batchedEvents);
+    }
+    arms_metrics::MeasureBatches measureBatches = new arms_metrics::MeasureBatches();
+    res = measureBatches.SerializeAsString();
 }
 
 
-void ArmsMetricsEventGroupListSerializer::ConvertBatchedEventsToMeasureBathch(BatchedEvents&& BatchedEvents) {
+void ArmsMetricsEventGroupListSerializer::ConvertBatchedEventsToMeasureBathch(BatchedEvents&& batchedEvents) {
+    for (const auto& events : batchedEvents) {
+        ConvertEventsToMeasures(events);
+    }
 }
 void ArmsMetricsEventGroupListSerializer::ConvertEventsToMeasures(EventsContainer&& events) {
+    for (const auto& e : events) {
+        arms_metrics::Measures measures = new arms_metrics::Measures();
+        auto measuresPtr = measures.add_measures();
+        auto& measure = ConvertEventToMeasure(std::move(e));
+    }
 }
 
 std::unique_ptr<Measure> ArmsMetricsEventGroupListSerializer::ConvertEventToMeasure(PipelineEventPtr&& event) {
