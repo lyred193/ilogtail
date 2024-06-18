@@ -4,6 +4,9 @@
 
 #include "serializer/ArmsSerializer.h"
 
+#include "arms_metrics_pb/MeasureBatches.pb.h"
+#include "log_pb/sls_logs.pb.h"
+
 // #include "arms_metrics_pb/MeasureBatches.pb.h"
 
 namespace logtail {
@@ -19,13 +22,18 @@ void ArmsMetricsEventGroupListSerializer::ConvertBatchedEventsToMeasureBathch(Ba
 void ArmsMetricsEventGroupListSerializer::ConvertEventsToMeasures(EventsContainer&& events) {
 }
 
-void ArmsMetricsEventGroupListSerializer::ConvertEventToMeasure(PipelineEventPtr&& event) {
+std::unique_ptr<Measure> ArmsMetricsEventGroupListSerializer::ConvertEventToMeasure(PipelineEventPtr&& event) {
     // convert to metric event
     auto& eventData = event.Cast<MetricEvent>();
-    for (const auto& kv : eventData) {
-        contPtr->set_key(kv.first.to_string());
-        contPtr->set_value(kv.second.to_string());
-    }
+    arms_metrics::MeasureBatch measureBath = new MeasureBatch();
+    arms_metrics::Measures measures = new Measures();
+    auto measurePtr = measures.add_measures();
+    measurePtr.set_name(eventData.GetName());
+    measurePtr.set_valuetype("");
+    measurePtr.set_value(eventData.GetValue());
+    measurePtr.set_desc(eventData.GetDesc());
+    measurePtr.set_unit(arms_metrics::EnumUnit::COUNT);
+    return make_unique<arms_metrics::Measure>(measurePtr);
 }
 
 
