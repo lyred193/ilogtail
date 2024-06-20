@@ -40,6 +40,9 @@ public:
     std::string mProject;
     std::string mRegion;
     std::string mAliuid;
+    std::string licenseKey;
+    std::string pushAppId;
+
 
 private:
     void SerializeAndPush(std::vector<BatchedEventsList>&& groupLists);
@@ -49,7 +52,14 @@ private:
     std::string GetArmsPrometheusGatewayOperation() const;
 
     Batcher<SLSEventBatchStatus> mBatcher;
-    std::unique_ptr<Serializer<std::vector<BatchedEvents>>> mGroupListSerializer;
+    std::unique_ptr<Serializer<std::vector<BatchedEventsList>>> mGroupListSerializer;
+
+    void PushToQueue(std::string&& data,
+                     size_t rawSize,
+                     RawDataType type,
+                     const std::string& logstore = "",
+                     const std::string& shardHashKey = "",
+                     RangeCheckpointPtr&& eoo = RangeCheckpointPtr());
 };
 
 

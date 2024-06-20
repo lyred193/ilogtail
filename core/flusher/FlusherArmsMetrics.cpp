@@ -31,6 +31,45 @@ FlusherArmsMetrics::FlusherArmsMetrics() : mRegion(Sender::Instance()->GetDefaul
 }
 
 bool FlusherArmsMetrics::Init(const Json::Value& config, Json::Value& optionalGoPipeline) {
+    mRegion = "cn-hangzhou";
+    string errorMsg;
+    // Region
+    if (!GetOptionalStringParam(config, "Region", mRegion, errorMsg)) {
+        PARAM_WARNING_DEFAULT(mContext->GetLogger(),
+                              mContext->GetAlarm(),
+                              errorMsg,
+                              mRegion,
+                              sName,
+                              mContext->GetConfigName(),
+                              mContext->GetProjectName(),
+                              mContext->GetLogstoreName(),
+                              mContext->GetRegion());
+    }
+    // licenseKey
+    if (!GetOptionalStringParam(config, "Licensekey", licenseKey, errorMsg)) {
+        PARAM_WARNING_DEFAULT(mContext->GetLogger(),
+                              mContext->GetAlarm(),
+                              errorMsg,
+                              mRegion,
+                              sName,
+                              mContext->GetConfigName(),
+                              mContext->GetProjectName(),
+                              mContext->GetLogstoreName(),
+                              mContext->GetRegion());
+    }
+    // pushAppId
+    if (!GetOptionalStringParam(config, "PushAppId", pushAppId, errorMsg)) {
+        PARAM_WARNING_DEFAULT(mContext->GetLogger(),
+                              mContext->GetAlarm(),
+                              errorMsg,
+                              mRegion,
+                              sName,
+                              mContext->GetConfigName(),
+                              mContext->GetProjectName(),
+                              mContext->GetLogstoreName(),
+                              mContext->GetRegion());
+    }
+
     //
     // mGroupListSerializer = make_unique<ArmsMetricsEventGroupListSerializer>(this);
     return true;
@@ -58,19 +97,45 @@ void FlusherArmsMetrics::Send(PipelineEventGroup&& g) {
     }
 }
 void FlusherArmsMetrics::Flush(size_t key) {
+    // BatchedEventsList res;
+    // mBatcher.FlushQueue(key, res);
+    // SerializeAndPush(std::move(res));
 }
 void FlusherArmsMetrics::FlushAll() {
+    vector<BatchedEventsList> res;
+    mBatcher.FlushAll(res);
+    SerializeAndPush(std::move(res));
 }
 
 
 void FlusherArmsMetrics::SerializeAndPush(BatchedEventsList&& groupList) {
-    string serializeArmsMetricData, serializeErrMsg;
-    mGroupListSerializer->Serialize(std::move(groupList), serializeArmsMetricData, serializeErrMsg);
 }
 
 
 void FlusherArmsMetrics::SerializeAndPush(vector<BatchedEventsList>&& groupLists) {
-    SerializeAndPush(std::move(groupLists));
+    string serializeArmsMetricData, serializeErrMsg;
+    mGroupListSerializer->Serialize(std::move(groupLists), serializeArmsMetricData, serializeErrMsg);
+    size_t packageSize = 0;
+    packageSize += serializeArmsMetricData.size();
+    PushToQueue(std::move(serializeArmsMetricData), packageSize, RawDataType::EVENT_GROUP_LIST);
+}
+
+void FlusherArmsMetrics::PushToQueue(string&& data,
+                                     size_t rawSize,
+                                     RawDataType type,
+                                     const string& logstore,
+                                     const string& shardHashKey,
+                                     RangeCheckpointPtr&& eoo) {
+    SLSSenderQueueItem* item = new SLSSenderQueueItem(std::move(data),
+                                                      rawSize,
+                                                      this,
+                                                      eoo ? eoo->fbKey : 0,
+                                                      shardHashKey,
+                                                      std::move(eoo),
+                                                      type,
+                                                      eoo ? false : true,
+                                                      logstore.empty() ? "" : logstore);
+    Sender::Instance()->PutIntoBatchMap(item, mRegion);
 }
 
 
@@ -114,7 +179,6 @@ sdk::AsynRequest* FlusherArmsMetrics::BuildRequest(SenderQueueItem* item) const 
                                 response);
 }
 
-
 std::string FlusherArmsMetrics::GetArmsPrometheusGatewayHost() const {
     std::string urlPrefix = "http://";
     std::string inner = "-intranet";
@@ -125,10 +189,9 @@ std::string FlusherArmsMetrics::GetArmsPrometheusGatewayHost() const {
 
 std::string FlusherArmsMetrics::GetArmsPrometheusGatewayOperation() const {
     std::string operation = "/collector/arms/ebpf/";
-    std::string licensekey = "ddd";
-    std::string appId = "";
-    operation.append(licensekey);
-    operation.append(appId);
+    operation.append(licenseKey);
+    operation.append("/");
+    operation.append(pushAppId);
     return operation;
 }
 

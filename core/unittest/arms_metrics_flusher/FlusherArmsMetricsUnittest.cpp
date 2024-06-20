@@ -44,15 +44,18 @@ void FlusherArmsMetricsUnittest::OnSuccessfulInit() {
     // only mandatory param
     configStr = R"(
         {
-            "Type": "flusher_sls",
+            "Type": "flusher_arms",
             "Project": "test_project",
             "Logstore": "test_logstore",
+            "Region": "cn-hk",
+            "Licensekey": "test-licenseKey",
+            "PushAppId": "test-push-appId",
             "Endpoint": "cn-hangzhou.log.aliyuncs.com"
         }
     )";
-    // APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
+    APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
     flusher.reset(new FlusherArmsMetrics());
-    flusher->Init(configStr, optionalGoPipeline);
+    flusher->Init(configJson, optionalGoPipeline);
     // auto item = new SenderQueueItem();
     auto requestItem = flusher->BuildRequest(nullptr);
     std::cout << &requestItem << std::endl;
