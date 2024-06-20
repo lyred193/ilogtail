@@ -69,6 +69,8 @@ bool FlusherArmsMetrics::Init(const Json::Value& config, Json::Value& optionalGo
                               mContext->GetLogstoreName(),
                               mContext->GetRegion());
     }
+    mCompressor = CompressorFactory::GetInstance()->Create(config, *mContext, sName, CompressType::SNAPPY);
+
 
     //
     // mGroupListSerializer = make_unique<ArmsMetricsEventGroupListSerializer>(this);
@@ -113,11 +115,28 @@ void FlusherArmsMetrics::SerializeAndPush(BatchedEventsList&& groupList) {
 
 
 void FlusherArmsMetrics::SerializeAndPush(vector<BatchedEventsList>&& groupLists) {
-    string serializeArmsMetricData, serializeErrMsg;
+    string serializeArmsMetricData, compressedData, serializeErrMsg;
     mGroupListSerializer->Serialize(std::move(groupLists), serializeArmsMetricData, serializeErrMsg);
     size_t packageSize = 0;
     packageSize += serializeArmsMetricData.size();
-    PushToQueue(std::move(serializeArmsMetricData), packageSize, RawDataType::EVENT_GROUP_LIST);
+    if (mCompressor) {
+        if (!mCompressor->Compress(serializeArmsMetricData, compressedData, serializeErrMsg)) {
+            LOG_WARNING(mContext->GetLogger(),
+                        ("failed to compress arms metrics event group", serializeErrMsg)("action", "discard data")(
+                            "plugin", sName)("config", mContext->GetConfigName()));
+            mContext->GetAlarm().SendAlarm(COMPRESS_FAIL_ALARM,
+                                           "failed to compress arms event group: " + serializeErrMsg
+                                               + "\taction: discard data\tplugin: " + sName
+                                               + "\tconfig: " + mContext->GetConfigName(),
+                                           mContext->GetProjectName(),
+                                           mContext->GetLogstoreName(),
+                                           mContext->GetRegion());
+            return;
+        }
+    } else {
+        compressedData = serializeArmsMetricData;
+    }
+    PushToQueue(std::move(compressedData), packageSize, RawDataType::EVENT_GROUP_LIST);
 }
 
 void FlusherArmsMetrics::PushToQueue(string&& data,

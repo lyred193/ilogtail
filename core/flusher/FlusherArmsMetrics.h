@@ -42,6 +42,7 @@ public:
     std::string mAliuid;
     std::string licenseKey;
     std::string pushAppId;
+    std::unique_ptr<Compressor> mCompressor;
 
 
 private:

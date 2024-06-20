@@ -281,6 +281,19 @@ macro(link_zstd target_name)
     endif ()
 endmacro()
 
+# snappy
+macro(link_snappy target_name)
+    if (snappy_${LINK_OPTION_SUFFIX})
+        target_link_libraries(${target_name} "${snappy_${LINK_OPTION_SUFFIX}}")
+    elseif (UNIX)
+        target_link_libraries(${target_name} "${snappy_${LIBRARY_DIR_SUFFIX}}/libsnappy.a")
+    elseif (MSVC)
+        target_link_libraries(${target_name}
+                debug "snappystaticd"
+                optimized "snappystatic")
+    endif ()
+endmacro()
+
 # libcurl
 macro(link_curl target_name)
     if (curl_${LINK_OPTION_SUFFIX})
