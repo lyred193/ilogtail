@@ -5,48 +5,79 @@
 #include "serializer/ArmsSerializer.h"
 
 #include "arms_metrics_pb/MeasureBatches.pb.h"
-#include "log_pb/sls_logs.pb.h"
 
-// #include "arms_metrics_pb/MeasureBatches.pb.h"
 
 namespace logtail {
 
-bool ArmsMetricsEventGroupListSerializer::Serialize(std::vector<BatchedEvents>&& v,
+bool ArmsMetricsEventGroupListSerializer::Serialize(std::vector<BatchedEventsList>&& v,
                                                     std::string& res,
                                                     std::string& errorMsg) {
-    for (auto& batchedEvents : v) {
-        ConvertBatchedEventsToMeasureBathch(batchedEvents);
+    auto measureBatches = new proto::MeasureBatches();
+    for (auto& batchedEventsList : v) {
+        ConvertBatchedEventsListToMeasureBatch(std::move(batchedEventsList), measureBatches);
     }
-    arms_metrics::MeasureBatches measureBatches = new arms_metrics::MeasureBatches();
-    res = measureBatches.SerializeAsString();
+    res = measureBatches->SerializeAsString();
+    return true;
+}
+
+void ArmsMetricsEventGroupListSerializer::ConvertBatchedEventsListToMeasureBatch(
+    BatchedEventsList&& batchedEventsList, proto::MeasureBatches* measureBatches) {
+    for (auto& batchedEvents : batchedEventsList) {
+        auto tags = batchedEvents.mTags.mInner;
+        auto measureBatch = measureBatches->add_measurebatches();
+        measureBatch->set_type("app");
+        measureBatch->set_ip(GetIpFromTags(batchedEvents.mTags));
+        measureBatch->set_pid(GetAppIdFromTags(batchedEvents.mTags));
+        ConvertBatchedEventsToMeasures(std::move(batchedEvents), measureBatch);
+    }
 }
 
 
-void ArmsMetricsEventGroupListSerializer::ConvertBatchedEventsToMeasureBathch(BatchedEvents&& batchedEvents) {
-    for (const auto& events : batchedEvents) {
-        ConvertEventsToMeasures(events);
-    }
-}
-void ArmsMetricsEventGroupListSerializer::ConvertEventsToMeasures(EventsContainer&& events) {
-    for (const auto& e : events) {
-        arms_metrics::Measures measures = new arms_metrics::Measures();
-        auto measuresPtr = measures.add_measures();
-        auto& measure = ConvertEventToMeasure(std::move(e));
+void ArmsMetricsEventGroupListSerializer::ConvertBatchedEventsToMeasures(BatchedEvents&& batchedEvents,
+                                                                         proto::MeasureBatch* measureBatch) {
+    auto measures = measureBatch->add_measures();
+    for (auto& kv : batchedEvents.mTags.mInner) {
+        measures->mutable_labels()->insert({kv.first.to_string(), kv.second.to_string()});
     }
 }
 
-std::unique_ptr<Measure> ArmsMetricsEventGroupListSerializer::ConvertEventToMeasure(PipelineEventPtr&& event) {
-    // convert to metric event
-    auto& eventData = event.Cast<MetricEvent>();
-    arms_metrics::MeasureBatch measureBath = new MeasureBatch();
-    arms_metrics::Measures measures = new Measures();
-    auto measurePtr = measures.add_measures();
-    measurePtr.set_name(eventData.GetName());
-    measurePtr.set_valuetype("");
-    measurePtr.set_value(eventData.GetValue());
-    measurePtr.set_desc(eventData.GetDesc());
-    measurePtr.set_unit(arms_metrics::EnumUnit::COUNT);
-    return make_unique<arms_metrics::Measure>(measurePtr);
+
+void ArmsMetricsEventGroupListSerializer::ConvertEventsToMeasure(EventsContainer&& events, proto::Measures* measures) {
+    for (const auto& event : events) {
+        // auto tags = event.GetSizedTags();
+        // add labels
+        // for (auto& kv : tags.mInner) {
+        //     measures->mutable_labels()->insert({kv.first.to_string(), kv.second.to_string()});
+        // }
+        auto measure = measures->add_measures();
+        auto& eventData = event.Cast<MetricEvent>();
+        eventData.GetTimestamp();
+        auto measurePtr = measure;
+        // measurePtr.set_name(eventData.GetName());
+        measurePtr->set_valuetype("");
+        // measurePtr.set_value(static_cast<double>(eventData.GetValue()));
+        // measurePtr.set_desc(eventData.GetDesc());
+        measurePtr->set_unit(proto::EnumUnit::COUNT);
+    }
+}
+
+std::string ArmsMetricsEventGroupListSerializer::GetIpFromTags(SizedMap& mTags) {
+    auto& mTagsInner = mTags.mInner;
+    auto it = mTagsInner.find("source_ip");
+    if (it != mTagsInner.end()) {
+        return it->second.to_string();
+    }
+    return "ip";
+}
+
+
+std::string ArmsMetricsEventGroupListSerializer::GetAppIdFromTags(SizedMap& mTags) {
+    auto& mTagsInner = mTags.mInner;
+    auto it = mTagsInner.find("appId");
+    if (it != mTagsInner.end()) {
+        return it->second.to_string();
+    }
+    return "appId";
 }
 
 

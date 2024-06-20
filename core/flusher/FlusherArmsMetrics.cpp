@@ -15,6 +15,7 @@
 #include "queue/SenderQueueItem.h"
 #include "sdk/Common.h"
 #include "sender/PackIdManager.h"
+#include "sender/SLSClientManager.h"
 #include "sender/Sender.h"
 #include "serializer/ArmsSerializer.h"
 
@@ -23,16 +24,38 @@ using namespace std;
 
 namespace logtail {
 
+const string FlusherArmsMetrics::sName = "flusher_arms_metrics";
+
+FlusherArmsMetrics::FlusherArmsMetrics() : mRegion(Sender::Instance()->GetDefaultRegion()) {
+    std::cout << "start test arms metrics flusher" << std::endl;
+}
 
 bool FlusherArmsMetrics::Init(const Json::Value& config, Json::Value& optionalGoPipeline) {
     //
+    // mGroupListSerializer = make_unique<ArmsMetricsEventGroupListSerializer>(this);
+    return true;
 }
 
 bool FlusherArmsMetrics::Register() {
+    Sender::Instance()->IncreaseProjectReferenceCnt(mProject);
+    Sender::Instance()->IncreaseRegionReferenceCnt(mRegion);
+    SLSClientManager::GetInstance()->IncreaseAliuidReferenceCntForRegion(mRegion, mAliuid);
+    return true;
 }
 bool FlusherArmsMetrics::Unregister(bool isPipelineRemoving) {
+    Sender::Instance()->DecreaseProjectReferenceCnt(mProject);
+    Sender::Instance()->DecreaseRegionReferenceCnt(mRegion);
+    SLSClientManager::GetInstance()->DecreaseAliuidReferenceCntForRegion(mRegion, mAliuid);
+    return true;
 }
 void FlusherArmsMetrics::Send(PipelineEventGroup&& g) {
+    if (g.IsReplay()) {
+        // SerializeAndPush(std::move(g));
+    } else {
+        vector<BatchedEventsList> res;
+        mBatcher.Add(std::move(g), res);
+        SerializeAndPush(std::move(res));
+    }
 }
 void FlusherArmsMetrics::Flush(size_t key) {
 }
@@ -47,9 +70,7 @@ void FlusherArmsMetrics::SerializeAndPush(BatchedEventsList&& groupList) {
 
 
 void FlusherArmsMetrics::SerializeAndPush(vector<BatchedEventsList>&& groupLists) {
-    for (auto& groupList : groupLists) {
-        SerializeAndPush(std::move(groupList));
-    }
+    SerializeAndPush(std::move(groupLists));
 }
 
 
@@ -62,24 +83,30 @@ sdk::AsynRequest* FlusherArmsMetrics::BuildRequest(SenderQueueItem* item) const 
     httpHeader["content.encoding"] = "snappy";
     string body = "";
     string compressBody;
-    //  snappy compress
-    // snappy::Compress(body,body, compressBody);
+    // snappy compress
+    // snappy::Compress(body, body.length(), compressBody);
     string HTTP_POST = "POST";
-    string host = "";
-    int32_t port = 443;
-    string operation = "";
+    auto host = GetArmsPrometheusGatewayHost();
+    std::cout << "BuildRequest host ..." << std::endl;
+    std::cout << host << std::endl;
+    int32_t port = 80;
+    auto operation = GetArmsPrometheusGatewayOperation();
+    std::cout << "BuildRequest operation ..." << std::endl;
+    std::cout << operation << std::endl;
     string queryString = "";
     int32_t mTimeout = 600;
     sdk::Response* response = new sdk::PostLogStoreLogsResponse();
     SendClosure* callBack = new SendClosure;
     string mInterface = "";
+    std::cout << "BuildRequest end ..." << std::endl;
+
     return new sdk::AsynRequest(HTTP_POST,
                                 host,
                                 port,
                                 operation,
                                 queryString,
                                 httpHeader,
-                                body,
+                                compressBody,
                                 mTimeout,
                                 mInterface,
                                 true,
@@ -87,8 +114,23 @@ sdk::AsynRequest* FlusherArmsMetrics::BuildRequest(SenderQueueItem* item) const 
                                 response);
 }
 
-} // namespace logtail
 
-int main() {
-    printf("test .. ");
+std::string FlusherArmsMetrics::GetArmsPrometheusGatewayHost() const {
+    std::string urlPrefix = "http://";
+    std::string inner = "-intranet";
+    std::string urlCommon = ".arms.aliyuncs.com";
+    std::string host = urlPrefix + mRegion + urlCommon;
+    return host;
 }
+
+std::string FlusherArmsMetrics::GetArmsPrometheusGatewayOperation() const {
+    std::string operation = "/collector/arms/ebpf/";
+    std::string licensekey = "ddd";
+    std::string appId = "";
+    operation.append(licensekey);
+    operation.append(appId);
+    return operation;
+}
+
+
+} // namespace logtail
