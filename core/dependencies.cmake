@@ -60,6 +60,7 @@ set(DEP_NAME_LIST
         crypto
         leveldb
         uuid
+        snappy
         )
 
 if (NOT NO_TCMALLOC)
@@ -517,7 +518,7 @@ macro(link_spl target_name)
     target_link_libraries(${target_name} "/opt/logtail_spl/lib/libprometheus-cpp-core.a")
     target_link_libraries(${target_name} "/opt/logtail_spl/lib/libprometheus-cpp-pull.a")
     target_link_libraries(${target_name} "/opt/logtail_spl/lib/libsimdjson.a")
-    target_link_libraries(${target_name} "/opt/logtail_spl/lib/libsnappy.a")
+    # target_link_libraries(${target_name} "/opt/logtail_spl/lib/libsnappy.a")
     target_link_libraries(${target_name} "/opt/logtail_spl/lib/libbz2.a")
     target_link_libraries(${target_name} "/opt/logtail_spl/lib/liblzo2.a")
     target_link_libraries(${target_name} "/opt/logtail_spl/lib/liby.a")

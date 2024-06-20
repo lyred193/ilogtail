@@ -44,7 +44,7 @@ void FlusherArmsMetricsUnittest::OnSuccessfulInit() {
     // only mandatory param
     configStr = R"(
         {
-            "Type": "flusher_arms",
+            "Type": "flusher_arms_metrics",
             "Project": "test_project",
             "Logstore": "test_logstore",
             "Region": "cn-hk",
