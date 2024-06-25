@@ -13,14 +13,16 @@
 // limitations under the License.
 
 #include "CurlAsynInstance.h"
+
+#include <curl/curl.h>
+#include <curl/multi.h>
+
 #include "Closure.h"
 #include "Exception.h"
 #include "Result.h"
-#include <curl/curl.h>
-#include <curl/multi.h>
-#include "logger/Logger.h"
 #include "app_config/AppConfig.h"
 #include "common/TimeUtil.h"
+#include "logger/Logger.h"
 
 using namespace std;
 
@@ -161,6 +163,7 @@ namespace sdk {
             }
         } else {
             request->mResponse->ParseSuccess(httpMsg);
+            LOG_INFO(sLogger, ("---response body:", httpMsg.content));
             request->mCallBack->OnSuccess(request->mResponse);
         }
     }

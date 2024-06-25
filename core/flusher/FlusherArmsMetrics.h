@@ -55,6 +55,9 @@ private:
     Batcher<SLSEventBatchStatus> mBatcher;
     std::unique_ptr<Serializer<std::vector<BatchedEventsList>>> mGroupListSerializer;
 
+    std::unique_ptr<PipelineEventGroup> mEventGroup;
+    void MockMetricsEvent();
+
     void PushToQueue(std::string&& data,
                      size_t rawSize,
                      RawDataType type,

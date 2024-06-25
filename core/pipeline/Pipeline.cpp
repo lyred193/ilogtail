@@ -127,6 +127,7 @@ bool Pipeline::Init(Config&& config) {
 
     for (auto detail : config.mFlushers) {
         string name = (*detail)["Type"].asString();
+        LOG_INFO(sLogger, ("flushers info", name));
         unique_ptr<FlusherInstance> flusher
             = PluginRegistry::GetInstance()->CreateFlusher(name, to_string(++pluginIndex));
         if (flusher) {

@@ -27,14 +27,24 @@ namespace logtail {
 class FlusherArmsMetricsUnittest : public testing::Test {
 public:
     void OnSuccessfulInit();
+    void Send();
 
 protected:
-    void SetUp() override { ctx.SetConfigName("test_config"); }
+    void SetUp() override {
+        ctx.SetConfigName("test_config");
+        mSourceBuffer.reset(new SourceBuffer);
+        mEventGroup.reset(new PipelineEventGroup(mSourceBuffer));
+    }
 
 private:
     PipelineContext ctx;
+    std::shared_ptr<SourceBuffer> mSourceBuffer;
+
+    std::unique_ptr<PipelineEventGroup> mEventGroup;
 };
 
+void FlusherArmsMetricsUnittest::Send() {
+}
 
 void FlusherArmsMetricsUnittest::OnSuccessfulInit() {
     unique_ptr<FlusherArmsMetrics> flusher;
@@ -55,39 +65,32 @@ void FlusherArmsMetricsUnittest::OnSuccessfulInit() {
     )";
     APSARA_TEST_TRUE(ParseJsonTable(configStr, configJson, errorMsg));
     flusher.reset(new FlusherArmsMetrics());
+    flusher->SetContext(ctx);
     flusher->Init(configJson, optionalGoPipeline);
-    // auto item = new SenderQueueItem();
-    auto requestItem = flusher->BuildRequest(nullptr);
-    std::cout << &requestItem << std::endl;
+    LOG_INFO(sLogger, ("AddMetricEvent", "start to add metricsEvent"));
+    LOG_INFO(sLogger, ("Set Metrics Name", "start to  Set Metrics name"));
+    mEventGroup->SetTag(std::string("workloadName"), std::string("arms-oneagent-test"));
+    mEventGroup->SetTag(std::string("workloadKind"), std::string("Deployment"));
+    mEventGroup->SetTag(std::string("pid"), std::string("1d15aab965811c49f42019136da3958b"));
+    mEventGroup->SetTag(std::string("appId"), std::string("1d15aab965811c49f42019136da3958b"));
+    mEventGroup->SetTag(std::string("source_ip"), std::string("10.54.0.33"));
+    mEventGroup->SetTag(std::string("host"), std::string("10.54.0.33"));
+    mEventGroup->SetTag(std::string("rpc"), std::string("/oneagent/lurious/local"));
+    mEventGroup->SetTag(std::string("rpcType"), std::string("0"));
+    mEventGroup->SetTag(std::string("callType"), std::string("http"));
+    mEventGroup->SetTag(std::string("appType"), std::string("EBPF"));
+    mEventGroup->SetTag(std::string("statusCode"), std::string("200"));
+    mEventGroup->SetTag(std::string("version"), std::string("HTTP1.1"));
+    mEventGroup->SetTag(std::string("source"), std::string("ebpf"));
+    for (int i = 100 - 1; i >= 0; i--) {
+        auto metricsEvent = mEventGroup->AddMetricEvent();
+        metricsEvent->SetName("arms_rpc_requests_count");
+        metricsEvent->SetValue(UntypedSingleValue{120.0});
+    }
 
-    // // flusher = new
-    // // flusher->SetContext(ctx);
-    // // flusher->SetMetricsRecordRef(FlusherArmsMetrics::sName, "1");
-    // APSARA_TEST_TRUE(flusher->Init(configJson, optionalGoPipeline));
-    // APSARA_TEST_TRUE(optionalGoPipeline.isNull());
-    // APSARA_TEST_EQUAL("test_project", flusher->mProject);
-    // // APSARA_TEST_EQUAL("test_logstore", flusher->mLogstore);
-    // // APSARA_TEST_EQUAL(GenerateLogstoreFeedBackKey("test_project", "test_logstore"), flusher->GetLogstoreKey());
-    // APSARA_TEST_EQUAL(STRING_FLAG(default_region_name), flusher->mRegion);
-    // // APSARA_TEST_EQUAL("cn-hangzhou.log.aliyuncs.com", flusher->mEndpoint);
+    LOG_INFO(sLogger, ("OnSuccessfulInit", "start to sender"));
+    flusher->Send(std::move(*mEventGroup));
     APSARA_TEST_EQUAL("", flusher->mAliuid);
-    // APSARA_TEST_EQUAL(FlusherArmsMetrics::TelemetryType::LOG, flusher->mTelemetryType);
-    // APSARA_TEST_EQUAL(0U, flusher->mFlowControlExpireTime);
-    // APSARA_TEST_EQUAL(-1, flusher->mMaxSendRate);
-    // APSARA_TEST_TRUE(flusher->mShardHashKeys.empty());
-    // APSARA_TEST_EQUAL(CompressType::LZ4, flusher->mCompressor->GetCompressType());
-    // APSARA_TEST_TRUE(flusher->mGroupSerializer);
-    // APSARA_TEST_TRUE(flusher->mGroupListSerializer);
-    // APSARA_TEST_EQUAL(static_cast<uint32_t>(INT32_FLAG(merge_log_count_limit)),
-    //                   flusher->mBatcher.mEventFlushStrategy.GetMaxCnt());
-    // APSARA_TEST_EQUAL(static_cast<uint32_t>(INT32_FLAG(batch_send_metric_size)),
-    //                   flusher->mBatcher.mEventFlushStrategy.GetMaxSizeBytes());
-    // uint32_t timeout = static_cast<uint32_t>(INT32_FLAG(batch_send_interval)) / 2;
-    // APSARA_TEST_EQUAL(static_cast<uint32_t>(INT32_FLAG(batch_send_interval)) - timeout,
-    //                   flusher->mBatcher.mEventFlushStrategy.GetTimeoutSecs());
-    // APSARA_TEST_EQUAL(static_cast<uint32_t>(INT32_FLAG(batch_send_metric_size)),
-    //                   flusher->mBatcher.mGroupFlushStrategy->GetMaxSizeBytes());
-    // APSARA_TEST_EQUAL(timeout, flusher->mBatcher.mGroupFlushStrategy->GetTimeoutSecs());
 }
 
 

@@ -200,6 +200,7 @@ shared_ptr<Pipeline> PipelineManager::FindPipelineByName(const string& configNam
 vector<string> PipelineManager::GetAllPipelineNames() const {
     vector<string> res;
     for (const auto& item : mPipelineNameEntityMap) {
+        LOG_INFO(sLogger, (" GetAllPipelineNames", item.first));
         res.push_back(item.first);
     }
     return res;

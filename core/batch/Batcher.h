@@ -112,9 +112,11 @@ public:
             if (!item.IsEmpty() && mEventFlushStrategy.NeedFlushByTime(item.GetStatus(), e)) {
                 if (!mGroupQueue) {
                     item.Flush(res);
+                    LOG_INFO(sLogger, ("!mGroupQueue", i));
                 } else {
                     if (!mGroupQueue->IsEmpty() && mGroupFlushStrategy->NeedFlushByTime(mGroupQueue->GetStatus())) {
                         mGroupQueue->Flush(res);
+                        LOG_INFO(sLogger, ("!mGroupQueue->IsEmpty() && ", i));
                     }
                     if (mGroupQueue->IsEmpty()) {
                         TimeoutFlushManager::GetInstance()->UpdateRecord(mFlusher->GetContext().GetConfigName(),
@@ -126,6 +128,7 @@ public:
                     item.Flush(mGroupQueue.value());
                     if (mGroupFlushStrategy->NeedFlushBySize(mGroupQueue->GetStatus())) {
                         mGroupQueue->Flush(res);
+                        LOG_INFO(sLogger, ("!mGroupFlushStrategy->NeedFlushBySize", i));
                     }
                 }
             }
@@ -143,6 +146,7 @@ public:
             if (mEventFlushStrategy.NeedFlushBySize(item.GetStatus())
                 || mEventFlushStrategy.NeedFlushByCnt(item.GetStatus())) {
                 item.Flush(res);
+                LOG_INFO(sLogger, ("mEventFlushStrategy.NeedFlushBySize", i));
             }
         }
     }

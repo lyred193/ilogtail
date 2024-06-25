@@ -14,8 +14,8 @@
 
 #include "processor/daemon/LogProcess.h"
 
-#include "batch/TimeoutFlushManager.h"
 #include "app_config/AppConfig.h"
+#include "batch/TimeoutFlushManager.h"
 #include "common/Flags.h"
 #include "go_pipeline/LogtailPlugin.h"
 #include "monitor/LogFileProfiler.h"
@@ -152,6 +152,19 @@ void* LogProcess::ProcessLoop(int32_t threadNo) {
         if (threadNo == 0 && curTime - lastMergeTime >= INT32_FLAG(default_flush_merged_buffer_interval)) {
             TimeoutFlushManager::GetInstance()->FlushTimeoutBatch();
             lastMergeTime = curTime;
+            LOG_INFO(sLogger, ("LogProcess ProcessLoop ", "CREATE by lurious"));
+            // auto mockPipeline = PipelineManager::GetInstance()->FindPipelineByName("file_simple");
+            // std::vector<PipelineEventGroup> mockEventGroupList;
+            // std::unique_ptr<PipelineEventGroup> mEventGroup;
+            // for (int i = 10 - 1; i >= 0; i--) {
+            //     auto metricsEvent = mEventGroup->AddMetricEvent();
+            //     metricsEvent->SetName("arms_request_count");
+            //     metricsEvent->SetTag(StringView("workloadName"), StringView("cmonitor_agent"));
+            //     metricsEvent->SetTag(StringView("workloadKind"), StringView("deployment"));
+            //     metricsEvent->SetTag(StringView("app"), StringView("cmonitor_agent"));
+            // }
+            // mockEventGroupList.emplace_back(std::move(*mEventGroup));
+            // mockPipeline->Send(std::move(mockEventGroupList));
         }
 
         if (threadNo == 0 && curTime - lastUpdateMetricTime >= 40) {
@@ -184,6 +197,44 @@ void* LogProcess::ProcessLoop(int32_t threadNo) {
             std::string configName;
             if (!ProcessQueueManager::GetInstance()->PopItem(threadNo, item, configName)) {
                 ProcessQueueManager::GetInstance()->Wait(100);
+                // LOG_INFO(sLogger, ("ProcessQueueManager ProcessLoop configName", configName));
+                auto testPipeline = PipelineManager::GetInstance()->FindPipelineByName("file_simple");
+                if (testPipeline) {
+                    LOG_INFO(sLogger, ("ProcessQueueManager ProcessLoop testPipeline name ", testPipeline->Name()));
+                    std::unique_ptr<PipelineEventGroup> mTestEventGroup;
+                    std::shared_ptr<SourceBuffer> mSourceBuffer;
+                    mSourceBuffer.reset(new SourceBuffer);
+                    mTestEventGroup.reset(new PipelineEventGroup(mSourceBuffer));
+                    mTestEventGroup->SetTag(std::string("workloadName"), std::string("arms-oneagent-test"));
+                    mTestEventGroup->SetTag(std::string("workloadKind"), std::string("Deployment"));
+                    mTestEventGroup->SetTag(std::string("pid"), std::string("1d15aab965811c49f42019136da3958b"));
+                    mTestEventGroup->SetTag(std::string("source_ip"), std::string("10.54.0.33"));
+                    mTestEventGroup->SetTag(std::string("host"), std::string("10.54.0.33"));
+                    mTestEventGroup->SetTag(std::string("rpc"), std::string("/oneagent/lurious/local"));
+                    mTestEventGroup->SetTag(std::string("rpcType"), std::string("0"));
+                    mTestEventGroup->SetTag(std::string("callType"), std::string("http"));
+                    mTestEventGroup->SetTag(std::string("appType"), std::string("EBPF"));
+                    mTestEventGroup->SetTag(std::string("statusCode"), std::string("200"));
+                    mTestEventGroup->SetTag(std::string("version"), std::string("HTTP1.1"));
+                    mTestEventGroup->SetTag(std::string("source"), std::string("ebpf"));
+                    for (int i = 100 - 1; i >= 0; i--) {
+                        auto metricsEvent = mTestEventGroup->AddMetricEvent();
+                        metricsEvent->SetName("arms_rpc_requests_count");
+                        metricsEvent->SetValue(UntypedSingleValue{i * 10.0});
+                    }
+                    LOG_INFO(sLogger,
+                             ("ProcessQueueManager ProcessLoop testPipeline build and send test metrics data, before "
+                              "mTestEventGroup data size ",
+                              mTestEventGroup->DataSize()));
+                    std::vector<PipelineEventGroup> eventTestGroupList;
+                    eventTestGroupList.emplace_back(std::move(*mTestEventGroup));
+                    testPipeline->Send(std::move(eventTestGroupList));
+                    LOG_INFO(
+                        sLogger,
+                        ("ProcessQueueManager ProcessLoop testPipeline build and send test metrics data ", "after"));
+                } else {
+                    LOG_INFO(sLogger, ("ProcessQueueManager ProcessLoop testPipeline name,testPipeline is ", "nil"));
+                }
                 continue;
             }
 
@@ -285,6 +336,8 @@ void* LogProcess::ProcessLoop(int32_t threadNo) {
                         0,
                         ""); // TODO: I don't think errorLine is useful
                 }
+                LOG_INFO(sLogger, ("-----pipeline start to sent data", "create By Lurious"));
+                LOG_INFO(sLogger, ("-----data info data size: ", eventGroupList.size()));
                 pipeline->Send(std::move(eventGroupList));
             }
         }

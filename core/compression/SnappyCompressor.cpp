@@ -23,7 +23,7 @@ namespace logtail {
 bool SnappyCompressor::Compress(const string& input, string& output, string& errorMsg) {
     snappy::Compress(input.data(), input.size(), &output);
 
-    return false;
+    return true;
 }
 
 

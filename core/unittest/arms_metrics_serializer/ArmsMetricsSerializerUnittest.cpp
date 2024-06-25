@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <snappy.h>
+#include <snappy/snappy.h>
 
 #include "flusher/FlusherArmsMetrics.h"
 #include "serializer/ArmsSerializer.h"
@@ -64,8 +64,10 @@ void ArmsMetricsSerializerUnittest::TestSerializeEventGroupList() {
     std::string res, errorMsg;
     APSARA_TEST_TRUE(serializer->Serialize(std::move(vec), res, errorMsg));
     std::cout << res << std::endl;
-    // std::string compressData;
-    // snappy::Compress(res.data(), res.size(), &compressData);
+    std::string compressData;
+    snappy::Compress(res.data(), res.size(), &compressData);
+    std::cout << "------------ end compressData ---------" << std::endl;
+    std::cout << compressData << std::endl;
 
     // sls_logs::SlsLogPackageList logPackageList;
     // APSARA_TEST_TRUE(logPackageList.ParseFromString(res));
@@ -77,11 +79,8 @@ void ArmsMetricsSerializerUnittest::TestSerializeEventGroupList() {
 
 BatchedEvents ArmsMetricsSerializerUnittest::CreateBatchedEvents(bool enableNanosecond) {
     PipelineEventGroup group(make_shared<SourceBuffer>());
-    // group.SetTag(LOG_RESERVED_KEY_TOPIC, "topic");
-    // group.SetTag(LOG_RESERVED_KEY_SOURCE, "source");
-    // group.SetTag(LOG_RESERVED_KEY_MACHINE_UUID, "machine_uuid");
-    // group.SetTag(LOG_RESERVED_KEY_PACKAGE_ID, "pack_id");
     group.SetTag(string("appName"), "cmonitor-test");
+    group.SetTag(string("clusterId"), "clusterId-test");
     group.SetTag(string("workloadName"), "cmonitor-test");
     group.SetTag(string("workloadKind"), "deployment");
     group.SetTag(string("appId"), "xxxxdsgejosldie");
