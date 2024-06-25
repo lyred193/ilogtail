@@ -157,21 +157,8 @@ void FlusherArmsMetrics::SerializeAndPush(vector<BatchedEventsList>&& groupLists
     PushToQueue(std::move(compressedData), packageSize, RawDataType::EVENT_GROUP_LIST);
 }
 
-void FlusherArmsMetrics::PushToQueue(string&& data,
-                                     size_t rawSize,
-                                     RawDataType type,
-                                     const string& logstore,
-                                     const string& shardHashKey,
-                                     RangeCheckpointPtr&& eoo) {
-    SLSSenderQueueItem* item = new SLSSenderQueueItem(std::move(data),
-                                                      rawSize,
-                                                      this,
-                                                      eoo ? eoo->fbKey : 0,
-                                                      shardHashKey,
-                                                      std::move(eoo),
-                                                      type,
-                                                      eoo ? false : true,
-                                                      logstore.empty() ? "" : logstore);
+void FlusherArmsMetrics::PushToQueue(string&& data, size_t rawSize, RawDataType type) {
+    SenderQueueItem* item = new SenderQueueItem(std::move(data), rawSize, this, mContext->GetProcessQueueKey());
     Sender::Instance()->PutIntoBatchMap(item, mRegion);
 }
 

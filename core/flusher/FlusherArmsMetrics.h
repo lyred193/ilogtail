@@ -56,14 +56,8 @@ private:
     std::unique_ptr<Serializer<std::vector<BatchedEventsList>>> mGroupListSerializer;
 
     std::unique_ptr<PipelineEventGroup> mEventGroup;
-    void MockMetricsEvent();
 
-    void PushToQueue(std::string&& data,
-                     size_t rawSize,
-                     RawDataType type,
-                     const std::string& logstore = "",
-                     const std::string& shardHashKey = "",
-                     RangeCheckpointPtr&& eoo = RangeCheckpointPtr());
+    void PushToQueue(std::string&& data, size_t rawSize, RawDataType type);
 };
 
 
