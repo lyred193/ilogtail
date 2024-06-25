@@ -21,8 +21,11 @@ using namespace std;
 namespace logtail {
 
 bool SnappyCompressor::Compress(const string& input, string& output, string& errorMsg) {
-    snappy::Compress(input.data(), input.size(), &output);
-
+    try {
+        snappy::Compress(input.data(), input.size(), &output);
+        return true;
+    } catch (...) {
+    }
     return false;
 }
 

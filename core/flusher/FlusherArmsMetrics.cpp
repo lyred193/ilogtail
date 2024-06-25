@@ -3,14 +3,13 @@
 //
 #include "flusher/FlusherArmsMetrics.h"
 
-#include <snappy.h>
-
 #include "batch/FlushStrategy.h"
 #include "common/EndpointUtil.h"
 #include "common/HashUtil.h"
 #include "common/LogtailCommonFlags.h"
 #include "common/ParamExtractor.h"
 #include "compression/CompressorFactory.h"
+#include "logger/Logger.h"
 #include "pipeline/Pipeline.h"
 #include "queue/SenderQueueItem.h"
 #include "sdk/Common.h"
@@ -19,15 +18,22 @@
 #include "sender/Sender.h"
 #include "serializer/ArmsSerializer.h"
 
-
 using namespace std;
+DEFINE_FLAG_INT32(arms_metrics_batch_send_interval, "batch sender interval (second)(default 3)", 3);
+DEFINE_FLAG_INT32(arms_metrics_merge_count_limit, "log count in one logGroup at most", 40000);
+DEFINE_FLAG_INT32(arms_metrics_batch_send_metric_size,
+                  "batch send metric size limit(bytes)(default 256KB)",
+                  256 * 1024);
 
 namespace logtail {
+
+DEFINE_FLAG_INT32(arms_test_merged_buffer_interval, "default flush merged buffer, seconds", 2);
+
 
 const string FlusherArmsMetrics::sName = "flusher_arms_metrics";
 
 FlusherArmsMetrics::FlusherArmsMetrics() : mRegion(Sender::Instance()->GetDefaultRegion()) {
-    std::cout << "start test arms metrics flusher" << std::endl;
+    LOG_INFO(sLogger, ("start test arms metrics flusher", "CREATE by lurious"));
 }
 
 bool FlusherArmsMetrics::Init(const Json::Value& config, Json::Value& optionalGoPipeline) {
@@ -70,10 +76,19 @@ bool FlusherArmsMetrics::Init(const Json::Value& config, Json::Value& optionalGo
                               mContext->GetRegion());
     }
     mCompressor = CompressorFactory::GetInstance()->Create(config, *mContext, sName, CompressType::SNAPPY);
-
-
     //
-    // mGroupListSerializer = make_unique<ArmsMetricsEventGroupListSerializer>(this);
+    mGroupListSerializer = make_unique<ArmsMetricsEventGroupListSerializer>(this);
+
+    DefaultFlushStrategyOptions strategy{static_cast<uint32_t>(INT32_FLAG(arms_metrics_batch_send_metric_size)),
+                                         static_cast<uint32_t>(INT32_FLAG(arms_metrics_merge_count_limit)),
+                                         static_cast<uint32_t>(INT32_FLAG(arms_metrics_batch_send_interval))};
+    if (!mBatcher.Init(Json::Value(), this, strategy, true)) {
+        // when either exactly once is enabled or ShardHashKeys is not empty, we don't enable group batch
+        LOG_WARNING(sLogger, ("mBatcher init info: ", "init err!"));
+        return false;
+    }
+    LOG_INFO(sLogger, ("init info: ", "arms metrics init successful !"));
+
     return true;
 }
 
@@ -89,9 +104,11 @@ bool FlusherArmsMetrics::Unregister(bool isPipelineRemoving) {
     SLSClientManager::GetInstance()->DecreaseAliuidReferenceCntForRegion(mRegion, mAliuid);
     return true;
 }
+
+
 void FlusherArmsMetrics::Send(PipelineEventGroup&& g) {
     if (g.IsReplay()) {
-        // SerializeAndPush(std::move(g));
+        LOG_WARNING(sLogger, (" IsReplay ", "true do not serialize data!"));
     } else {
         vector<BatchedEventsList> res;
         mBatcher.Add(std::move(g), res);
@@ -136,6 +153,7 @@ void FlusherArmsMetrics::SerializeAndPush(vector<BatchedEventsList>&& groupLists
     } else {
         compressedData = serializeArmsMetricData;
     }
+
     PushToQueue(std::move(compressedData), packageSize, RawDataType::EVENT_GROUP_LIST);
 }
 
@@ -157,32 +175,22 @@ void FlusherArmsMetrics::PushToQueue(string&& data,
     Sender::Instance()->PutIntoBatchMap(item, mRegion);
 }
 
-
-// req.Header.Set("Content-Type", "text/plain")
-// req.Header.Set("content.encoding", "snappy")
-// req.Header.Set("User-Agent", e.userAgent)
 sdk::AsynRequest* FlusherArmsMetrics::BuildRequest(SenderQueueItem* item) const {
     map<string, string> httpHeader;
     httpHeader[logtail::sdk::CONTENT_TYPE] = "text/plain";
     httpHeader["content.encoding"] = "snappy";
-    string body = "";
-    string compressBody;
-    // snappy compress
-    // snappy::Compress(body, body.length(), compressBody);
+    string body = item->mData;
     string HTTP_POST = "POST";
     auto host = GetArmsPrometheusGatewayHost();
-    std::cout << "BuildRequest host ..." << std::endl;
-    std::cout << host << std::endl;
     int32_t port = 80;
     auto operation = GetArmsPrometheusGatewayOperation();
-    std::cout << "BuildRequest operation ..." << std::endl;
-    std::cout << operation << std::endl;
+
     string queryString = "";
     int32_t mTimeout = 600;
     sdk::Response* response = new sdk::PostLogStoreLogsResponse();
-    SendClosure* callBack = new SendClosure;
+    SendClosure* sendClosure = new SendClosure;
+    sendClosure->mDataPtr = item;
     string mInterface = "";
-    std::cout << "BuildRequest end ..." << std::endl;
 
     return new sdk::AsynRequest(HTTP_POST,
                                 host,
@@ -190,19 +198,18 @@ sdk::AsynRequest* FlusherArmsMetrics::BuildRequest(SenderQueueItem* item) const 
                                 operation,
                                 queryString,
                                 httpHeader,
-                                compressBody,
+                                body,
                                 mTimeout,
                                 mInterface,
-                                true,
-                                callBack,
+                                false,
+                                sendClosure,
                                 response);
 }
 
 std::string FlusherArmsMetrics::GetArmsPrometheusGatewayHost() const {
-    std::string urlPrefix = "http://";
     std::string inner = "-intranet";
     std::string urlCommon = ".arms.aliyuncs.com";
-    std::string host = urlPrefix + mRegion + urlCommon;
+    std::string host = mRegion + urlCommon;
     return host;
 }
 

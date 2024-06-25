@@ -24,7 +24,9 @@ private:
                                                 proto::MeasureBatches* measureBatches);
     void ConvertBatchedEventsToMeasures(BatchedEvents&& batchedEvents, proto::MeasureBatch* measureBatch);
     void ConvertEventsToMeasure(EventsContainer&& events, proto::Measures* measures);
+    int64_t GetMeasureTimestamp(BatchedEvents& batchedEvents);
 
+    proto::EnumUnit GetUnitByMetricName(std::string metricName);
     std::string GetIpFromTags(SizedMap& mTags);
     std::string GetAppIdFromTags(SizedMap& mTags);
 };
