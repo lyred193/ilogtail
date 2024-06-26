@@ -58,6 +58,8 @@ private:
     std::unique_ptr<PipelineEventGroup> mEventGroup;
 
     void PushToQueue(std::string&& data, size_t rawSize, RawDataType type);
+
+    BatchedEventsList ConvertToBatchedList(PipelineEventGroup&& g);
 };
 
 

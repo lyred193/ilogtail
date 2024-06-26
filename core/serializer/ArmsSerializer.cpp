@@ -23,6 +23,27 @@ const std::map<std::string, proto::EnumUnit> metricUnitMap{
     {"arms_npm_tcp_rtt_avg", proto::EnumUnit::MILLISECONDS},
 };
 
+const std::string COUNT = "count";
+const std::string SUM = "SUM";
+
+
+const std::map<std::string, std::string> metricValueTypeMap{
+    {"arms_rpc_requests_count", COUNT},
+    {"arms_rpc_requests_error_count", COUNT},
+    {"arms_rpc_requests_seconds", SUM},
+    {"arms_rpc_requests_slow_count", COUNT},
+    {"arms_rpc_requests_by_status_count", COUNT},
+    {"arms_npm_sent_bytes_total", COUNT},
+    {"arms_npm_recv_bytes_total", COUNT},
+    {"arms_npm_sent_packets_total", COUNT},
+    {"arms_npm_recv_packets_total", COUNT},
+    {"arms_npm_tcp_retrans_total", COUNT},
+    {"arms_npm_tcp_drop_count", COUNT},
+    {"arms_npm_tcp_conn_stats_count", COUNT},
+    {"arms_npm_tcp_count_by_state", COUNT},
+    {"arms_npm_tcp_rtt_avg", SUM},
+};
+
 
 namespace logtail {
 
@@ -48,6 +69,11 @@ void ArmsMetricsEventGroupListSerializer::ConvertBatchedEventsListToMeasureBatch
         measureBatch->set_time(GetMeasureTimestamp(batchedEvents));
         measureBatch->set_version("v1");
         measureBatch->set_pid(GetAppIdFromTags(batchedEvents.mTags));
+        measureBatch->mutable_commontags()->insert({"source", "ebpf"});
+        measureBatch->mutable_commontags()->insert({"appType", "EBPF"});
+        for (auto& kv : batchedEvents.mTags.mInner) {
+            measureBatch->mutable_commontags()->insert({kv.first.to_string(), kv.second.to_string()});
+        }
         ConvertBatchedEventsToMeasures(std::move(batchedEvents), measureBatch);
     }
 }
@@ -68,11 +94,23 @@ int64_t ArmsMetricsEventGroupListSerializer::GetMeasureTimestamp(BatchedEvents& 
 
 void ArmsMetricsEventGroupListSerializer::ConvertBatchedEventsToMeasures(BatchedEvents&& batchedEvents,
                                                                          proto::MeasureBatch* measureBatch) {
-    auto measures = measureBatch->add_measures();
-    for (auto& kv : batchedEvents.mTags.mInner) {
-        measures->mutable_labels()->insert({kv.first.to_string(), kv.second.to_string()});
+    for (const auto& event : batchedEvents.mEvents) {
+        auto measures = measureBatch->add_measures();
+        auto measure = measures->add_measures();
+        auto& eventData = event.Cast<MetricEvent>();
+        for (auto& kv : eventData.GetTags()) {
+            measures->mutable_labels()->insert({kv.first.to_string(), kv.second.to_string()});
+        }
+        eventData.GetTimestamp();
+        std::string metricName(eventData.GetName().data(), eventData.GetName().size());
+        measure->set_name(metricName);
+        measure->set_valuetype(GetValueTypeByMetricName(metricName));
+        if (eventData.Is<UntypedSingleValue>()) {
+            auto value = eventData.GetValue<UntypedSingleValue>()->mValue;
+            measure->set_value(value);
+        }
+        measure->set_unit(GetUnitByMetricName(metricName));
     }
-    ConvertEventsToMeasure(std::move(batchedEvents.mEvents), measures);
 }
 
 
@@ -83,7 +121,7 @@ void ArmsMetricsEventGroupListSerializer::ConvertEventsToMeasure(EventsContainer
         eventData.GetTimestamp();
         std::string metricName(eventData.GetName().data(), eventData.GetName().size());
         measure->set_name(metricName);
-        measure->set_valuetype("");
+        measure->set_valuetype(GetValueTypeByMetricName(metricName));
         if (eventData.Is<UntypedSingleValue>()) {
             auto value = eventData.GetValue<UntypedSingleValue>()->mValue;
             measure->set_value(value);
@@ -98,6 +136,15 @@ proto::EnumUnit ArmsMetricsEventGroupListSerializer::GetUnitByMetricName(std::st
         return it->second;
     } else {
         return proto::EnumUnit::UNKNOWN;
+    }
+}
+
+std::string ArmsMetricsEventGroupListSerializer::GetValueTypeByMetricName(std::string metricName) {
+    auto it = metricValueTypeMap.find(metricName);
+    if (it != metricValueTypeMap.end()) {
+        return it->second;
+    } else {
+        return COUNT;
     }
 }
 

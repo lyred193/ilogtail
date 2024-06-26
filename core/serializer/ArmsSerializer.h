@@ -27,6 +27,7 @@ private:
     int64_t GetMeasureTimestamp(BatchedEvents& batchedEvents);
 
     proto::EnumUnit GetUnitByMetricName(std::string metricName);
+    std::string GetValueTypeByMetricName(std::string metricName);
     std::string GetIpFromTags(SizedMap& mTags);
     std::string GetAppIdFromTags(SizedMap& mTags);
 };

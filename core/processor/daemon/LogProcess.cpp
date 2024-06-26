@@ -287,8 +287,6 @@ void* LogProcess::ProcessLoop(int32_t threadNo) {
                         0,
                         ""); // TODO: I don't think errorLine is useful
                 }
-                LOG_INFO(sLogger, ("-----pipeline start to sent data", "create By Lurious"));
-                LOG_INFO(sLogger, ("-----data info data size: ", eventGroupList.size()));
                 pipeline->Send(std::move(eventGroupList));
             }
         }

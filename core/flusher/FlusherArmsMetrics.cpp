@@ -111,9 +111,23 @@ void FlusherArmsMetrics::Send(PipelineEventGroup&& g) {
         LOG_WARNING(sLogger, (" IsReplay ", "true do not serialize data!"));
     } else {
         vector<BatchedEventsList> res;
-        mBatcher.Add(std::move(g), res);
+        // mBatcher.Add(std::move(g), res);
+        auto batchList = ConvertToBatchedList(std::move(g));
+        res.emplace_back(std::move(batchList));
         SerializeAndPush(std::move(res));
     }
+}
+BatchedEventsList FlusherArmsMetrics::ConvertToBatchedList(PipelineEventGroup&& group) {
+    // EventsContainer &&events, SizedMap &&tags, std::shared_ptr<SourceBuffer>&&sourceBuffer, StringView packIdPrefix,
+    //     RangeCheckpointPtr &&eoo
+    std::vector<BatchedEvents> batchedEventList;
+    BatchedEvents batch(std::move(group.MutableEvents()),
+                        std::move(group.GetSizedTags()),
+                        std::move(group.GetSourceBuffer()),
+                        group.GetMetadata(EventGroupMetaKey::SOURCE_ID),
+                        std::move(group.GetExactlyOnceCheckpoint()));
+    batchedEventList.emplace_back(std::move(batch));
+    return batchedEventList;
 }
 void FlusherArmsMetrics::Flush(size_t key) {
     // BatchedEventsList res;
