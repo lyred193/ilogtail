@@ -104,7 +104,7 @@ void SendClosure::OnSuccess(sdk::Response* response) {
     BOOL_FLAG(global_network_success) = true;
     Sender::Instance()->SubSendingBufferCount();
     Sender::Instance()->DescSendingCount();
-    LOG_INFO(sLogger, ("send data on successful : statusCode: ", "ddd"));
+
     if (mDataPtr->mFlusher->Name() == "flusher_sls") {
         auto data = static_cast<SLSSenderQueueItem*>(mDataPtr);
         auto flusher = static_cast<const FlusherSLS*>(data->mFlusher);
@@ -373,8 +373,6 @@ void SendClosure::OnFail(sdk::Response* response, const string& errorCode, const
         }
 #undef LOG_PATTERN
     } else {
-        LOG_INFO(sLogger, ("send data on fail: statusCode: ", response->statusCode));
-        LOG_INFO(sLogger, ("send data on fail: errorMessage: ", errorMessage));
         Sender::Instance()->SubSendingBufferCount();
         Sender::Instance()->OnSendDone(mDataPtr, LogstoreSenderInfo::SendResult_DiscardFail);
         Sender::Instance()->DescSendingCount();
@@ -424,7 +422,7 @@ Sender::Sender() : mDefaultRegion(STRING_FLAG(default_region_name)) {
         concurrencyCount = 50;
     }
     mSenderQueue.SetParam((size_t)(concurrencyCount * 1.5), (size_t)(concurrencyCount * 2), 200);
-    LOG_INFO(sLogger, ("Set sender queue param depend value test by lurious", concurrencyCount));
+    LOG_INFO(sLogger, ("Set sender queue param depend value", concurrencyCount));
     new Thread(bind(&Sender::DaemonSender, this)); // be careful: this thread will not stop until process exit
     new Thread(bind(&Sender::WriteSecondary, this)); // be careful: this thread will not stop until process exit
 }

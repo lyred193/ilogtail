@@ -214,9 +214,8 @@ void Application::Start() {
 
     LogtailAlarm::GetInstance()->Init();
     LogtailMonitor::GetInstance()->Init();
-    LOG_INFO(sLogger, ("PluginRegistry info", "start load plugins"));
+
     PluginRegistry::GetInstance()->LoadPlugins();
-    LOG_INFO(sLogger, ("PluginRegistry info", "end load plugins..."));
     InputFeedbackInterfaceRegistry::GetInstance()->LoadFeedbackInterfaces();
 
 #if defined(__ENTERPRISE__) && defined(__linux__) && !defined(__ANDROID__)

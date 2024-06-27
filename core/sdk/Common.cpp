@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #include "Common.h"
-
 #include "app_config/AppConfig.h"
-#include "common/ErrorUtil.h"
-#include "common/StringTools.h"
 #include "common/TimeUtil.h"
+#include "common/StringTools.h"
+#include "common/ErrorUtil.h"
 #include "logger/Logger.h"
 
 using namespace std;
@@ -866,10 +865,10 @@ namespace sdk {
         unsigned mlen = (unsigned)((bits >> 3) % SHA1_INPUT_BYTES), padding = SHA1_INPUT_BYTES - mlen;
         M[mlen++] = 0x80;
         if (padding > BIT_COUNT_BYTES) {
-            memset(M + mlen, 0x00, padding - BIT_COUNT_BYTES);
+                        memset(M + mlen, 0x00, padding - BIT_COUNT_BYTES);
             make_big_endian32((uint32_t*)M, SHA1_INPUT_WORDS - BIT_COUNT_WORDS);
         } else {
-            memset(M + mlen, 0x00, SHA1_INPUT_BYTES - mlen);
+                        memset(M + mlen, 0x00, SHA1_INPUT_BYTES - mlen);
             make_big_endian32((uint32_t*)M, SHA1_INPUT_WORDS);
             transform();
             memset(M, 0x00, SHA1_INPUT_BYTES - BIT_COUNT_BYTES);

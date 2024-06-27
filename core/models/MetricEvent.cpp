@@ -16,9 +16,6 @@
 
 #include "models/MetricEvent.h"
 
-#include <iostream>
-
-
 using namespace std;
 
 namespace logtail {

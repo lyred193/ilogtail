@@ -70,7 +70,9 @@ bool SLSEventGroupSerializer::Serialize(BatchedEvents&& group, string& res, stri
     return true;
 }
 
-bool SLSEventGroupListSerializer::Serialize(vector<CompressedLogGroup>&& v, string& res, string& errorMsg) {
+bool SLSEventGroupListSerializer::Serialize(vector<CompressedLogGroup>&& v,
+                                            string& res,
+                                            string& errorMsg) {
     sls_logs::SlsLogPackageList logPackageList;
     for (const auto& item : v) {
         auto package = logPackageList.add_packages();
